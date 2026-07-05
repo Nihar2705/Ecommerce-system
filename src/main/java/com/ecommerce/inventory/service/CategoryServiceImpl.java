@@ -1,5 +1,7 @@
 package com.ecommerce.inventory.service;
 
+import com.ecommerce.inventory.dto.category.CategoryRequest;
+import com.ecommerce.inventory.dto.category.CategoryResponse;
 import com.ecommerce.inventory.entity.Category;
 import com.ecommerce.inventory.exception.ResourceNotFoundException;
 import com.ecommerce.inventory.repository.CategoryRepository;
@@ -7,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryServiceImpl implements CategoryService {
@@ -15,32 +18,53 @@ public class CategoryServiceImpl implements CategoryService {
     private CategoryRepository categoryRepository;
 
     @Override
-    public Category createCategory(Category category) {
-        return categoryRepository.save(category);
+    public CategoryResponse createCategory(CategoryRequest request) {
+        Category category = new Category();
+        category.setName(request.getName());
+        category.setDescription(request.getDescription());
+
+        Category savedCategory = categoryRepository.save(category);
+        return toResponse(savedCategory);
     }
 
     @Override
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+    public List<CategoryResponse> getAllCategories() {
+        return categoryRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Category getCategoryById(Long id) {
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+    public CategoryResponse getCategoryById(Long id) {
+        Category category = findCategoryEntityById(id);
+        return toResponse(category);
     }
 
     @Override
-    public Category updateCategory(Long id, Category categoryDetails) {
-        Category category = getCategoryById(id);
-        category.setName(categoryDetails.getName());
-        category.setDescription(categoryDetails.getDescription());
-        return categoryRepository.save(category);
+    public CategoryResponse updateCategory(Long id, CategoryRequest request) {
+        Category category = findCategoryEntityById(id);
+        category.setName(request.getName());
+        category.setDescription(request.getDescription());
+
+        Category updatedCategory = categoryRepository.save(category);
+        return toResponse(updatedCategory);
     }
 
     @Override
     public void deleteCategory(Long id) {
-        Category category = getCategoryById(id);
+        Category category = findCategoryEntityById(id);
         categoryRepository.delete(category);
+    }
+
+    // Fetches the managed Category entity by id (ProductServiceImpl has its own copy
+    // since it uses CategoryRepository directly to avoid a service-to-service dependency).
+    private Category findCategoryEntityById(Long id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+    }
+
+    private CategoryResponse toResponse(Category category) {
+        return new CategoryResponse(category.getId(), category.getName(), category.getDescription());
     }
 }

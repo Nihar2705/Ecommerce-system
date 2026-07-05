@@ -1,106 +1,169 @@
 # E-Commerce Inventory System
 
-A backend-only Spring Boot REST API for managing an e-commerce store's inventory —
-Products organized under Categories.
+A Spring Boot REST API for managing an e-commerce store's inventory — Products organized
+under Categories — now secured with JWT authentication and role-based authorization.
+
+## Version History
+
+**Version 1**
+- CRUD for Category and Product
+- One-to-Many relationship (Category → Products)
+- Global exception handling
+
+**Version 2 (this version) adds:**
+- Spring Security (stateless, JWT-based)
+- Role-based authorization (ADMIN / USER)
+- JWT access tokens + database-backed refresh tokens
+- A DTO layer so controllers never expose entities directly
 
 ## Tech Stack
 - Java 17
 - Spring Boot 3.3.0
-- Spring Web
-- Spring Data JPA
+- Spring Web, Spring Data JPA, Spring Security
 - MySQL
+- JWT (jjwt)
 - Maven
 - Lombok
-
-## Features
-- CRUD operations for Category and Product
-- One-to-Many relationship (One Category → Many Products)
-- Global exception handling via `@RestControllerAdvice`
 
 ## Project Structure
 ```
 src/main/java/com/ecommerce/inventory
 │
-├── controller     -> REST controllers (CategoryController, ProductController)
-├── service        -> Service interfaces + implementations
-├── repository     -> Spring Data JPA repositories
-├── entity         -> JPA entities (Category, Product)
-├── exception      -> ResourceNotFoundException, ErrorResponse, GlobalExceptionHandler
+├── controller     -> AuthController, CategoryController, ProductController
+├── service        -> Auth/Category/Product service interfaces + implementations
+├── repository     -> User, Role, RefreshToken, Category, Product repositories
+├── entity         -> User, Role, RefreshToken, Category, Product
+├── dto            -> auth/, user/, category/, product/ request & response DTOs
+├── security       -> JwtUtil, JwtAuthenticationFilter, CustomUserDetails(Service),
+│                     CustomAuthenticationEntryPoint, CustomAccessDeniedHandler
+├── config         -> SecurityConfig, DataInitializer
+├── exception      -> ResourceNotFoundException, UserAlreadyExistsException,
+│                     InvalidRefreshTokenException, RefreshTokenExpiredException,
+│                     ErrorResponse, GlobalExceptionHandler
 └── EcommerceInventoryApplication.java
 ```
 
 ## Setup
 
-1. Create a MySQL server running locally (or update the connection details).
-2. Update `src/main/resources/application.properties` with your MySQL username/password:
-   ```properties
-   spring.datasource.url=jdbc:mysql://localhost:3306/ecommerce_inventory_db?createDatabaseIfNotExist=true
-   spring.datasource.username=root
-   spring.datasource.password=root
-   ```
-3. Build and run:
+1. Update `src/main/resources/application.properties` with your MySQL credentials.
+2. Build and run:
    ```bash
    mvn clean install
    mvn spring-boot:run
    ```
-4. The API will start on `http://localhost:8080`.
+3. On first startup, `DataInitializer` seeds the `ADMIN` and `USER` roles and creates a
+   default admin account:
+   - username: `admin`
+   - password: `Admin@123`
+
+   (Self-registration via `/api/auth/register` always creates a `USER` account — there is
+   no way to register as ADMIN through the API, by design.)
+
+## Authentication Flow
+
+1. **Register** a new user (always created with role `USER`):
+   ```
+   POST /api/auth/register
+   { "username": "john", "email": "john@example.com", "password": "Passw0rd!" }
+   ```
+
+2. **Login** with username or email:
+   ```
+   POST /api/auth/login
+   { "usernameOrEmail": "john", "password": "Passw0rd!" }
+   ```
+   Response:
+   ```json
+   {
+     "accessToken": "eyJhbGciOi...",
+     "refreshToken": "b3f1c9a0-...",
+     "tokenType": "Bearer",
+     "user": { "id": 2, "username": "john", "email": "john@example.com", "role": "USER" }
+   }
+   ```
+
+3. **Call protected endpoints** with the access token:
+   ```
+   Authorization: Bearer eyJhbGciOi...
+   ```
+
+4. **Refresh** the access token once it expires:
+   ```
+   POST /api/auth/refresh-token
+   { "refreshToken": "b3f1c9a0-..." }
+   ```
+   Returns a new access token. If the refresh token is unknown or expired, a 401 error is
+   returned instead.
+
+## Authorization Rules
+
+| Action                        | ADMIN | USER |
+|--------------------------------|-------|------|
+| View Categories / Products     | ✅    | ✅   |
+| Create/Update/Delete Category  | ✅    | ❌   |
+| Create/Update/Delete Product   | ✅    | ❌   |
+
+Enforced both at the URL level (`SecurityConfig`) and at the method level
+(`@PreAuthorize` on controller methods).
 
 ## API Endpoints
 
-### Category
-| Method | Endpoint              | Description          |
-|--------|-----------------------|-----------------------|
-| POST   | `/api/categories`     | Create a category     |
-| GET    | `/api/categories`     | Get all categories     |
-| GET    | `/api/categories/{id}`| Get category by id     |
-| PUT    | `/api/categories/{id}`| Update category        |
-| DELETE | `/api/categories/{id}`| Delete category        |
+### Auth
+| Method | Endpoint                     | Access |
+|--------|-------------------------------|--------|
+| POST   | `/api/auth/register`         | Public |
+| POST   | `/api/auth/login`            | Public |
+| POST   | `/api/auth/refresh-token`    | Public |
 
-**Sample body:**
-```json
-{
-  "name": "Electronics",
-  "description": "Electronic gadgets and devices"
-}
-```
+### Category
+| Method | Endpoint               | Access        |
+|--------|-------------------------|---------------|
+| POST   | `/api/categories`      | ADMIN         |
+| GET    | `/api/categories`      | ADMIN, USER   |
+| GET    | `/api/categories/{id}` | ADMIN, USER   |
+| PUT    | `/api/categories/{id}` | ADMIN         |
+| DELETE | `/api/categories/{id}` | ADMIN         |
 
 ### Product
-| Method | Endpoint            | Description         |
-|--------|----------------------|----------------------|
-| POST   | `/api/products`      | Create a product     |
-| GET    | `/api/products`      | Get all products      |
-| GET    | `/api/products/{id}` | Get product by id      |
-| PUT    | `/api/products/{id}` | Update product         |
-| DELETE | `/api/products/{id}` | Delete product         |
+| Method | Endpoint             | Access        |
+|--------|-----------------------|---------------|
+| POST   | `/api/products`      | ADMIN         |
+| GET    | `/api/products`      | ADMIN, USER   |
+| GET    | `/api/products/{id}` | ADMIN, USER   |
+| PUT    | `/api/products/{id}` | ADMIN         |
+| DELETE | `/api/products/{id}` | ADMIN         |
 
-**Sample body:** (category must already exist; only `id` is required in the nested object)
-```json
-{
-  "name": "Wireless Mouse",
-  "description": "Bluetooth mouse",
-  "price": 799.0,
-  "quantity": 50,
-  "category": { "id": 1 }
-}
-```
+All Category/Product request and response bodies use DTOs
+(`CategoryRequest`/`CategoryResponse`, `ProductRequest`/`ProductResponse`) — entities are
+never exposed. `ProductRequest` references a category via `categoryId`.
 
 ## Exception Handling
-- `ResourceNotFoundException` -> returns HTTP 404 with a structured error body
-- Any other unhandled exception -> returns HTTP 500 with a structured error body
 
-Example error response:
-```json
-{
-  "timestamp": "2026-07-05T10:15:30",
-  "status": 404,
-  "message": "Product not found with id: 99",
-  "details": "uri=/api/products/99"
-}
-```
+`GlobalExceptionHandler` keeps all Version 1 handling and adds:
+
+| Scenario                         | Exception                        | HTTP Status |
+|-----------------------------------|-----------------------------------|--------------|
+| Resource not found (V1)          | `ResourceNotFoundException`      | 404          |
+| Invalid login credentials        | `BadCredentialsException`        | 401          |
+| Duplicate username/email          | `UserAlreadyExistsException`     | 409          |
+| Unknown refresh token            | `InvalidRefreshTokenException`   | 401          |
+| Expired refresh token            | `RefreshTokenExpiredException`   | 401          |
+| Not authenticated                | `AuthenticationException`        | 401          |
+| Authenticated but not permitted  | `AccessDeniedException`          | 403          |
+| Any other unhandled exception (V1) | `Exception`                    | 500          |
+
+Requests rejected directly by the security filter chain (missing/invalid token, or
+insufficient role) return the same JSON error shape via
+`CustomAuthenticationEntryPoint` (401) and `CustomAccessDeniedHandler` (403).
+
+## Database
+
+New tables added in Version 2 (Category and Product tables are unchanged from Version 1):
+- `roles` — id, name (ADMIN/USER)
+- `users` — id, username, email, password (BCrypt-hashed), role_id
+- `refresh_tokens` — id, token, expiry_date, user_id
 
 ## Notes
-- No DTOs — entities are used directly as request/response bodies.
-- `Category.products` is marked `@JsonIgnore` to prevent infinite JSON recursion during serialization.
-- No Spring Security, JWT, pagination, sorting, Swagger, Docker, caching, unit tests beyond the
-  default context-load test, file upload, logging, or advanced response wrappers were included,
-  per project scope.
+- No pagination, sorting, Swagger/OpenAPI, Docker, caching, file upload, email
+  verification, password reset, OAuth, or logging were added — strictly out of scope
+  for this version.

@@ -1,5 +1,7 @@
 package com.ecommerce.inventory.service;
 
+import com.ecommerce.inventory.dto.product.ProductRequest;
+import com.ecommerce.inventory.dto.product.ProductResponse;
 import com.ecommerce.inventory.entity.Category;
 import com.ecommerce.inventory.entity.Product;
 import com.ecommerce.inventory.exception.ResourceNotFoundException;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -20,48 +23,77 @@ public class ProductServiceImpl implements ProductService {
     private CategoryRepository categoryRepository;
 
     @Override
-    public Product createProduct(Product product) {
-        Long categoryId = product.getCategory().getId();
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+    public ProductResponse createProduct(ProductRequest request) {
+        Category category = findCategoryEntityById(request.getCategoryId());
 
+        Product product = new Product();
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setQuantity(request.getQuantity());
         product.setCategory(category);
-        return productRepository.save(product);
+
+        Product savedProduct = productRepository.save(product);
+        return toResponse(savedProduct);
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Product getProductById(Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+    public ProductResponse getProductById(Long id) {
+        Product product = findProductEntityById(id);
+        return toResponse(product);
     }
 
     @Override
-    public Product updateProduct(Long id, Product productDetails) {
-        Product product = getProductById(id);
+    public ProductResponse updateProduct(Long id, ProductRequest request) {
+        Product product = findProductEntityById(id);
 
-        product.setName(productDetails.getName());
-        product.setDescription(productDetails.getDescription());
-        product.setPrice(productDetails.getPrice());
-        product.setQuantity(productDetails.getQuantity());
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setQuantity(request.getQuantity());
 
-        if (productDetails.getCategory() != null && productDetails.getCategory().getId() != null) {
-            Long categoryId = productDetails.getCategory().getId();
-            Category category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+        if (request.getCategoryId() != null) {
+            Category category = findCategoryEntityById(request.getCategoryId());
             product.setCategory(category);
         }
 
-        return productRepository.save(product);
+        Product updatedProduct = productRepository.save(product);
+        return toResponse(updatedProduct);
     }
 
     @Override
     public void deleteProduct(Long id) {
-        Product product = getProductById(id);
+        Product product = findProductEntityById(id);
         productRepository.delete(product);
+    }
+
+    private Product findProductEntityById(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+    }
+
+    private Category findCategoryEntityById(Long categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+    }
+
+    private ProductResponse toResponse(Product product) {
+        return new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getQuantity(),
+                product.getCategory().getId(),
+                product.getCategory().getName()
+        );
     }
 }

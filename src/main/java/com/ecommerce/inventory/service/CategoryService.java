@@ -1,18 +1,19 @@
 package com.ecommerce.inventory.service;
 
-import com.ecommerce.inventory.entity.Category;
+import com.ecommerce.inventory.dto.category.CategoryRequest;
+import com.ecommerce.inventory.dto.category.CategoryResponse;
 
 import java.util.List;
 
 public interface CategoryService {
 
-    Category createCategory(Category category);
+    CategoryResponse createCategory(CategoryRequest request);
 
-    List<Category> getAllCategories();
+    List<CategoryResponse> getAllCategories();
 
-    Category getCategoryById(Long id);
+    CategoryResponse getCategoryById(Long id);
 
-    Category updateCategory(Long id, Category categoryDetails);
+    CategoryResponse updateCategory(Long id, CategoryRequest request);
 
     void deleteCategory(Long id);
 }

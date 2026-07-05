@@ -1,18 +1,19 @@
 package com.ecommerce.inventory.service;
 
-import com.ecommerce.inventory.entity.Product;
+import com.ecommerce.inventory.dto.product.ProductRequest;
+import com.ecommerce.inventory.dto.product.ProductResponse;
 
 import java.util.List;
 
 public interface ProductService {
 
-    Product createProduct(Product product);
+    ProductResponse createProduct(ProductRequest request);
 
-    List<Product> getAllProducts();
+    List<ProductResponse> getAllProducts();
 
-    Product getProductById(Long id);
+    ProductResponse getProductById(Long id);
 
-    Product updateProduct(Long id, Product productDetails);
+    ProductResponse updateProduct(Long id, ProductRequest request);
 
     void deleteProduct(Long id);
 }
