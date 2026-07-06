@@ -123,6 +123,55 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
+    // ---------- New handler added in Version 4 (Sorting) ----------
+
+    // Requested sortBy field is not a valid/sortable field on the target entity
+    @ExceptionHandler(InvalidSortFieldException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSortFieldException(
+            InvalidSortFieldException ex, WebRequest request) {
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // ---------- New handlers added in Version 5 (Search) ----------
+
+    // Zero, or more than one, group of search criteria supplied to /api/products/search
+    @ExceptionHandler(InvalidSearchParameterException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSearchParameterException(
+            InvalidSearchParameterException ex, WebRequest request) {
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // minPrice greater than maxPrice in a price-range search
+    @ExceptionHandler(InvalidPriceRangeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPriceRangeException(
+            InvalidPriceRangeException ex, WebRequest request) {
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
     // ---------- Existing generic fallback from Version 1 (unchanged) ----------
 
     // Handles any other unexpected exception
