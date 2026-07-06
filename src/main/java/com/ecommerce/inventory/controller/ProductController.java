@@ -1,15 +1,16 @@
 package com.ecommerce.inventory.controller;
 
+import com.ecommerce.inventory.dto.common.PaginatedResponse;
 import com.ecommerce.inventory.dto.product.ProductRequest;
 import com.ecommerce.inventory.dto.product.ProductResponse;
 import com.ecommerce.inventory.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -27,10 +28,15 @@ public class ProductController {
     }
 
     // ADMIN and USER
+    // Modified in Version 3: supports pagination via ?page=&size= (defaults: page=0, size=10)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping
-    public ResponseEntity<List<ProductResponse>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<PaginatedResponse<ProductResponse>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
 
     // ADMIN and USER

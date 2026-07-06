@@ -2,14 +2,14 @@ package com.ecommerce.inventory.service;
 
 import com.ecommerce.inventory.dto.category.CategoryRequest;
 import com.ecommerce.inventory.dto.category.CategoryResponse;
+import com.ecommerce.inventory.dto.common.PaginatedResponse;
 import com.ecommerce.inventory.entity.Category;
 import com.ecommerce.inventory.exception.ResourceNotFoundException;
 import com.ecommerce.inventory.repository.CategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class CategoryServiceImpl implements CategoryService {
@@ -28,11 +28,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryResponse> getAllCategories() {
-        return categoryRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public PaginatedResponse<CategoryResponse> getAllCategories(Pageable pageable) {
+        Page<Category> categoryPage = categoryRepository.findAll(pageable);
+        Page<CategoryResponse> responsePage = categoryPage.map(this::toResponse);
+        return PaginatedResponse.from(responsePage);
     }
 
     @Override

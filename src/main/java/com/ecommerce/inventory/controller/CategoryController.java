@@ -2,14 +2,15 @@ package com.ecommerce.inventory.controller;
 
 import com.ecommerce.inventory.dto.category.CategoryRequest;
 import com.ecommerce.inventory.dto.category.CategoryResponse;
+import com.ecommerce.inventory.dto.common.PaginatedResponse;
 import com.ecommerce.inventory.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -27,10 +28,15 @@ public class CategoryController {
     }
 
     // ADMIN and USER
+    // Modified in Version 3: supports pagination via ?page=&size= (defaults: page=0, size=5)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<PaginatedResponse<CategoryResponse>> getAllCategories(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(categoryService.getAllCategories(pageable));
     }
 
     // ADMIN and USER

@@ -1,15 +1,16 @@
 package com.ecommerce.inventory.service;
 
+import com.ecommerce.inventory.dto.common.PaginatedResponse;
 import com.ecommerce.inventory.dto.product.ProductRequest;
 import com.ecommerce.inventory.dto.product.ProductResponse;
-
-import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 public interface ProductService {
 
     ProductResponse createProduct(ProductRequest request);
 
-    List<ProductResponse> getAllProducts();
+    // Modified in Version 3: now returns a paginated result instead of a full List
+    PaginatedResponse<ProductResponse> getAllProducts(Pageable pageable);
 
     ProductResponse getProductById(Long id);
 

@@ -1,5 +1,6 @@
 package com.ecommerce.inventory.service;
 
+import com.ecommerce.inventory.dto.common.PaginatedResponse;
 import com.ecommerce.inventory.dto.product.ProductRequest;
 import com.ecommerce.inventory.dto.product.ProductResponse;
 import com.ecommerce.inventory.entity.Category;
@@ -8,10 +9,9 @@ import com.ecommerce.inventory.exception.ResourceNotFoundException;
 import com.ecommerce.inventory.repository.CategoryRepository;
 import com.ecommerce.inventory.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -38,11 +38,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public PaginatedResponse<ProductResponse> getAllProducts(Pageable pageable) {
+        Page<Product> productPage = productRepository.findAll(pageable);
+        Page<ProductResponse> responsePage = productPage.map(this::toResponse);
+        return PaginatedResponse.from(responsePage);
     }
 
     @Override

@@ -10,11 +10,14 @@ under Categories — now secured with JWT authentication and role-based authoriz
 - One-to-Many relationship (Category → Products)
 - Global exception handling
 
-**Version 2 (this version) adds:**
+**Version 2 adds:**
 - Spring Security (stateless, JWT-based)
 - Role-based authorization (ADMIN / USER)
 - JWT access tokens + database-backed refresh tokens
 - A DTO layer so controllers never expose entities directly
+
+**Version 3 (this version) adds:**
+- Pagination for `GET /api/categories` and `GET /api/products` using Spring Data's `Pageable`
 
 ## Tech Stack
 - Java 17
@@ -33,7 +36,7 @@ src/main/java/com/ecommerce/inventory
 ├── service        -> Auth/Category/Product service interfaces + implementations
 ├── repository     -> User, Role, RefreshToken, Category, Product repositories
 ├── entity         -> User, Role, RefreshToken, Category, Product
-├── dto            -> auth/, user/, category/, product/ request & response DTOs
+├── dto            -> auth/, user/, category/, product/, common/ (PaginatedResponse) DTOs
 ├── security       -> JwtUtil, JwtAuthenticationFilter, CustomUserDetails(Service),
 │                     CustomAuthenticationEntryPoint, CustomAccessDeniedHandler
 ├── config         -> SecurityConfig, DataInitializer
@@ -119,7 +122,7 @@ Enforced both at the URL level (`SecurityConfig`) and at the method level
 | Method | Endpoint               | Access        |
 |--------|-------------------------|---------------|
 | POST   | `/api/categories`      | ADMIN         |
-| GET    | `/api/categories`      | ADMIN, USER   |
+| GET    | `/api/categories?page=&size=` | ADMIN, USER   |
 | GET    | `/api/categories/{id}` | ADMIN, USER   |
 | PUT    | `/api/categories/{id}` | ADMIN         |
 | DELETE | `/api/categories/{id}` | ADMIN         |
@@ -128,7 +131,7 @@ Enforced both at the URL level (`SecurityConfig`) and at the method level
 | Method | Endpoint             | Access        |
 |--------|-----------------------|---------------|
 | POST   | `/api/products`      | ADMIN         |
-| GET    | `/api/products`      | ADMIN, USER   |
+| GET    | `/api/products?page=&size=` | ADMIN, USER   |
 | GET    | `/api/products/{id}` | ADMIN, USER   |
 | PUT    | `/api/products/{id}` | ADMIN         |
 | DELETE | `/api/products/{id}` | ADMIN         |
@@ -136,6 +139,34 @@ Enforced both at the URL level (`SecurityConfig`) and at the method level
 All Category/Product request and response bodies use DTOs
 (`CategoryRequest`/`CategoryResponse`, `ProductRequest`/`ProductResponse`) — entities are
 never exposed. `ProductRequest` references a category via `categoryId`.
+
+## Pagination (Version 3)
+
+`GET /api/categories` and `GET /api/products` accept optional `page` and `size` query
+parameters:
+
+```
+GET /api/categories?page=0&size=5
+GET /api/products?page=0&size=10
+```
+
+- `page` defaults to `0` if not provided.
+- `size` defaults to `5` for categories and `10` for products if not provided.
+- Both endpoints return a `PaginatedResponse<T>`:
+
+```json
+{
+  "content": [ { "id": 1, "name": "Electronics", "description": "..." } ],
+  "pageNumber": 0,
+  "pageSize": 5,
+  "totalElements": 12,
+  "totalPages": 3,
+  "last": false
+}
+```
+
+Pagination is available to both ADMIN and USER roles, matching the existing GET access
+rules. No sorting, searching, or filtering was added.
 
 ## Exception Handling
 
